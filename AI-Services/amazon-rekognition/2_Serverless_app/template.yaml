@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  My Image App - API
+
+# This is the global definitions
+# In this example the definitions is only for the Lambdas
+Globals:
+  Function:
+    Runtime: python3.6
+    Timeout: 600
+    MemorySize: 1024
+
+Resources:
+  # This is the bucket to upload the images
+  ImageBucket:
+    Type: AWS::S3::Bucket
+    Properties:  # This is done to avoid circular dependencies
+      BucketName: !Sub "image-bucket-${AWS::AccountId}"
+
+  # This is the table to save the image tags
+  ImageTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: AppImageTable
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:  # These are the two fields that consists the Primary Key
+        - AttributeName: "image-id"
+          KeyType: "HASH"  # This is the Partition Key
+        - AttributeName: "tag"
+          KeyType: "RANGE"  # This is the sort key
+      AttributeDefinitions:  # For each reference in the KeySchema we have to set the types
+        - AttributeName: "image-id"
+          AttributeType: "S"
+        - AttributeName: "tag"
+          AttributeType: "S"
+
+  # This is the function that send the image to Amazon Rekognition
+  # in order to get the tags. It will be triggered when an image is uploaded to the bucket
+  RecognizeImageFunction:
+    Type: "AWS::Serverless::Function"
+    Properties:
+      CodeUri: src
+      Handler: recognize_image.lambda_handler
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref ImageTable  # This will be passed as an environ variable to Lambda
+      Policies:
+        - S3CrudPolicy:  # With this policy the Lambda has read-write access to the bucket
+            BucketName: !Sub "image-bucket-${AWS::AccountId}/*"
+        - DynamoDBCrudPolicy:  # With this policy the Lambda can red-write to the Table
+            TableName: !Ref ImageTable
+        - AmazonRekognitionReadOnlyAccess
+      Events:  # These are the events that trigger this Lambda Function
+        GenerateTags:  # When an object is created in this bucket the Lambda will be triggered for execution
+          Type: S3
+          Properties:
+            Bucket: !Ref ImageBucket
+            Events: s3:ObjectCreated:*
+
+Outputs:
+  ImageBucket:
+    Description: "The bucket to save the images"
+    Value: !Ref ImageBucket
+  ImageTable:
+    Description: "The DynamoDB table to save the images"
+    Value: !GetAtt ImageTable.Arn
+  RecognizeImageFunction:
+    Description: "Lambda to tag the image and save to DynamoDB"
+    Value: !GetAtt RecognizeImageFunction.Arn

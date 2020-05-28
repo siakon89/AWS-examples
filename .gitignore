@@ -1,1 +1,4 @@
 .ipynb_checkpoints
+.aws-sam
+*deploy.sh
+.idea
