@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  xgboost-serverless
+
+  Sample SAM Template for xgboost-serverless
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 300
+
+Resources:
+  TunisiaPyDataDemoAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: v1
+      Name: tunisia-pydata-demo
+      Auth:
+        DefaultAuthorizer: AWS_IAM
+        InvokeRole: CALLER_CREDENTIALS
+
+  PredictFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      PackageType: Image
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: arn:aws:secretsmanager:eu-central-1:988095220859:secret:tunisia_pydata_demo-9H2Txo
+      Events:
+        HelloWorld:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /predict/
+            Method: post
+            RestApiId: !Ref TunisiaPyDataDemoAPI
+            Auth:
+              Authorizer: 'NONE'
+    Metadata:
+      DockerTag: python3.7-v1
+      DockerContext: ./iris_model_predictor
+      Dockerfile: Dockerfile
+
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  APIUrl:
+    Description: "API Gateway endpoint URL for Prod stage for Predict function"
+    Value: !Sub "https://${TunisiaPyDataDemoAPI}.execute-api.${AWS::Region}.amazonaws.com/v1/predict/"
+  PredictFunction:
+    Description: "Predict Lambda Function ARN"
+    Value: !GetAtt PredictFunction.Arn
+  HelloWorldFunctionIamRole:
+    Description: "Implicit IAM Role created for Predict function"
+    Value: !GetAtt PredictFunction.Arn

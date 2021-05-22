@@ -1,0 +1,5 @@
+requests
+boto3
+xgboost==1.4.2
+pandas
+sklearn
