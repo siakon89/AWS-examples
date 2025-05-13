@@ -3,3 +3,7 @@
 *deploy.sh
 .idea
 .DS_Store
+
+.terraform
+.terraform.lock.hcl
+terraform.tfstate*
