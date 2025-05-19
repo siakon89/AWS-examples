@@ -7,3 +7,5 @@
 .terraform
 .terraform.lock.hcl
 terraform.tfstate*
+sample_data/
+local
